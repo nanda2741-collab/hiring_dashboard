@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hiring Tracker — The Brews Brothers</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f7f5;--surface:#fff;--surface2:#f2f2ef;--border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.18);
+  --text:#1a1a18;--text2:#5a5a56;--text3:#909088;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-bd:#85B7EB;
+  --green:#0F6E56;--green-bg:#E1F5EE;--green-bd:#5DCAA5;
+  --red:#A32D2D;--red-bg:#FCEBEB;--red-bd:#F09595;
+  --amber:#854F0B;--amber-bg:#FAEEDA;--amber-bd:#EF9F27;
+  --purple:#534AB7;--purple-bg:#EEEDFE;--purple-bd:#AFA9EC;
+  --r:8px;--rl:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.login-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--rl);padding:2rem;width:340px}
+.login-brand{font-size:12px;color:var(--text3);margin-bottom:2px}
+.login-title{font-size:20px;font-weight:500;margin-bottom:1.5rem}
+.l-label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
+.l-input{width:100%;border:0.5px solid var(--border2);border-radius:var(--r);padding:8px 10px;font-size:14px;background:var(--surface);color:var(--text);margin-bottom:12px;outline:none}
+.l-input:focus{border-color:var(--blue)}
+.login-err{font-size:12px;color:var(--red);margin-bottom:8px;display:none}
+
+/* APP */
+.app{display:none}
+.header{background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:10}
+.header-brand{font-size:12px;color:var(--text3)}
+.header-title{font-size:15px;font-weight:500}
+.user-chip{display:flex;align-items:center;gap:8px}
+.avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;background:var(--blue-bg);color:var(--blue)}
+.role-tag{font-size:11px;padding:2px 7px;border-radius:20px;font-weight:500}
+.rt-admin{background:#EEEDFE;color:#534AB7}
+.rt-hr{background:var(--green-bg);color:var(--green)}
+.rt-ops{background:var(--blue-bg);color:var(--blue)}
+.main{max-width:920px;margin:0 auto;padding:1.5rem 1rem}
+
+/* TABS */
+.tabs{display:flex;gap:2px;background:var(--surface2);border-radius:var(--r);padding:3px;margin-bottom:1.5rem;width:fit-content}
+.tab{padding:5px 14px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text2);border:none;background:transparent}
+.tab.active{background:var(--surface);color:var(--text);font-weight:500;border:0.5px solid var(--border)}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem}
+.stat{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:.85rem 1rem}
+.stat-label{font-size:11px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.stat-val{font-size:24px;font-weight:500}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.filter-btn{font-size:12px;padding:4px 10px;border-radius:20px;border:0.5px solid var(--border);background:transparent;cursor:pointer;color:var(--text2)}
+.filter-btn.active{background:var(--surface);border-color:var(--border2);color:var(--text);font-weight:500}
+.spacer{flex:1}
+.search{border:0.5px solid var(--border2);border-radius:var(--r);padding:6px 10px;font-size:13px;background:var(--surface);color:var(--text);outline:none;width:180px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--r);border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-size:12px;color:var(--text)}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)}
+.btn-primary:hover{opacity:.85}
+.btn-danger{background:var(--red-bg);border-color:var(--red-bd);color:var(--red)}
+.btn-success{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
+.btn-amber{background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)}
+.btn-purple{background:var(--purple-bg);border-color:var(--purple-bd);color:var(--purple)}
+.btn-sm{font-size:11px;padding:4px 8px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* CARDS */
+.req-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden}
+.req-header{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+.req-header:hover{background:var(--surface2)}
+.req-info{flex:1;min-width:0}
+.req-title{font-size:14px;font-weight:500}
+.req-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.hc-pill{font-size:11px;padding:2px 8px;border-radius:20px;border:0.5px solid var(--border);color:var(--text2);white-space:nowrap}
+.req-body{border-top:0.5px solid var(--border);display:none}
+.req-body.open{display:block}
+
+/* BADGES */
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.b-sourcing{background:var(--surface2);color:var(--text2)}
+.b-shortlist{background:var(--blue-bg);color:var(--blue)}
+.b-interview{background:var(--purple-bg);color:var(--purple)}
+.b-selected{background:var(--green-bg);color:var(--green)}
+.b-offer{background:var(--amber-bg);color:var(--amber)}
+.b-joined{background:var(--green-bg);color:var(--green);border:0.5px solid var(--green-bd)}
+.b-rejected{background:var(--surface2);color:var(--text3)}
+.b-noshow{background:var(--red-bg);color:var(--red)}
+.b-auction{background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber-bd)}
+.b-open{background:var(--blue-bg);color:var(--blue)}
+.b-closed{background:var(--surface2);color:var(--text3)}
+.b-urgent{background:var(--red-bg);color:var(--red);font-size:10px}
+.b-admin{background:#EEEDFE;color:#534AB7}
+.b-hr{background:var(--green-bg);color:var(--green)}
+.b-ops{background:var(--blue-bg);color:var(--blue)}
+.b-inactive{background:var(--surface2);color:var(--text3)}
+
+/* CANDIDATES */
+.cand-list{padding:12px 14px}
+.cand-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r);cursor:pointer}
+.cand-row:hover{background:var(--surface2)}
+.cand-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;background:var(--surface2);color:var(--text2);flex-shrink:0}
+.cand-name{font-size:13px;font-weight:500;flex:1}
+.cand-detail{font-size:12px;color:var(--text3)}
+
+/* DETAIL */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.detail-key{font-size:11px;color:var(--text3)}
+.detail-val{font-size:13px;color:var(--text);font-weight:500}
+.actions-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)}
+
+/* AUCTION */
+.auction-box{background:var(--amber-bg);border:0.5px solid var(--amber-bd);border-radius:var(--r);padding:10px 12px;margin:0 14px 14px}
+.auction-title{font-size:12px;font-weight:500;color:var(--amber);margin-bottom:4px}
+.auction-reason{font-size:12px;color:var(--amber);margin-bottom:8px}
+.auction-claims{display:flex;gap:6px;flex-wrap:wrap}
+
+/* DASHBOARD */
+.dash-table{width:100%;border-collapse:collapse;font-size:13px}
+.dash-table th{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:left;font-weight:400}
+.dash-table td{padding:8px 10px;border-bottom:0.5px solid var(--border)}
+.dash-table tr:last-child td{border-bottom:none}
+.progress-bar{background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;width:80px}
+.progress-fill{height:100%;border-radius:4px}
+
+/* USERS TAB */
+.user-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:10px}
+.user-row{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.user-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;background:var(--blue-bg);color:var(--blue);flex-shrink:0}
+.user-info{flex:1}
+.user-name{font-size:14px;font-weight:500}
+.user-pw{font-size:12px;color:var(--text3);margin-top:2px;font-family:monospace}
+.user-actions{display:flex;gap:6px}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:50;align-items:center;justify-content:center;padding:1rem}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--rl);border:0.5px solid var(--border);padding:1.25rem;width:420px;max-width:100%;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:500;margin-bottom:1rem}
+.form-row{margin-bottom:12px}
+.form-row label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
+.form-row input,.form-row select,.form-row textarea{width:100%;border:0.5px solid var(--border2);border-radius:var(--r);padding:7px 10px;font-size:13px;background:var(--surface);color:var(--text);outline:none}
+.form-row input:focus,.form-row select:focus{border-color:var(--blue)}
+.form-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+
+/* MISC */
+.empty-state{text-align:center;padding:3rem;color:var(--text3)}
+.empty-state i{font-size:32px;display:block;margin-bottom:8px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.7);z-index:100;align-items:center;justify-content:center;display:none}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--text);color:white;padding:10px 16px;border-radius:var(--r);font-size:13px;z-index:200;display:none}
+.section-card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:1.5rem}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">The Brews Brothers</div>
+    <div class="login-title">Hiring tracker</div>
+    <label class="l-label">Password</label>
+    <input class="l-input" type="password" id="pw-input" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-err" id="login-err">Incorrect password. Please try again.</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:9px" onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="header">
+    <div>
+      <div class="header-brand">The Brews Brothers</div>
+      <div class="header-title">Hiring tracker</div>
+    </div>
+    <div class="user-chip">
+      <div class="avatar" id="user-avatar"></div>
+      <div>
+        <div style="font-size:13px;font-weight:500" id="user-name"></div>
+        <div class="role-tag" id="user-role-tag"></div>
+      </div>
+      <button class="btn btn-sm" onclick="logout()" style="margin-left:4px"><i class="ti ti-logout" style="font-size:13px"></i></button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="tabs" id="tabs">
+      <button class="tab active" onclick="showTab('reqs',this)">Requisitions</button>
+      <button class="tab" onclick="showTab('dash',this)">Dashboard</button>
+    </div>
+
+    <div id="tab-reqs">
+      <div class="stats" id="stats"></div>
+      <div class="toolbar">
+        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('Coffee?',this)">Coffee?</button>
+        <button class="filter-btn" onclick="setFilter('Bask Poes',this)">Bask Poes</button>
+        <button class="filter-btn" onclick="setFilter('Bask ECR',this)">Bask ECR</button>
+        <button class="filter-btn" onclick="setFilter('SOAK',this)">SOAK</button>
+        <button class="filter-btn" onclick="setFilter('auction',this)"><i class="ti ti-gavel" style="font-size:12px"></i> Auction</button>
+        <div class="spacer"></div>
+        <input class="search" type="text" placeholder="Search role…" oninput="renderReqs()" id="search-input">
+        <button class="btn btn-primary" id="btn-new-req" onclick="openModal('req')" style="display:none"><i class="ti ti-plus" style="font-size:13px"></i> New requisition</button>
+      </div>
+      <div id="req-list"></div>
+    </div>
+
+    <div id="tab-dash" style="display:none"><div id="dash-content"></div></div>
+    <div id="tab-users" style="display:none"><div id="users-content"></div></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeOverlay(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+let S = {
+  role: null, name: null, password: null,
+  requisitions: [], candidates: [], users: [],
+  filter: 'all', openReqs: new Set(), openCands: new Set(),
+};
+
+// ── API ──────────────────────────────────────────────────────
+async function api(action, params={}) {
+  setLoading(true);
+  try {
+    const res = await fetch(API_URL, {
+      method:'POST', mode:'cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, password:S.password, ...params})
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error||'Request failed');
+    return data;
+  } finally { setLoading(false); }
+}
+
+// ── AUTH ─────────────────────────────────────────────────────
+async function doLogin() {
+  const pw = document.getElementById('pw-input').value.trim();
+  if (!pw) return;
+  try {
+    const data = await api('getAll', {password:pw});
+    S.password = pw;
+    S.role = data.user.role;
+    S.name = data.user.name;
+    S.requisitions = data.requisitions||[];
+    S.candidates = data.candidates||[];
+    document.getElementById('login-wrap').style.display='none';
+    document.getElementById('app').style.display='block';
+    const initials = S.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-name').textContent = S.name;
+    const rt = document.getElementById('user-role-tag');
+    rt.textContent = S.role.toUpperCase();
+    rt.className = 'role-tag rt-'+S.role;
+    // Show/hide tabs based on role
+    if (S.role==='admin') {
+      const tabs = document.getElementById('tabs');
+      tabs.innerHTML += '<button class="tab" onclick="showTab(\'users\',this)">Users</button>';
+    }
+    // Show new req button for all roles
+    document.getElementById('btn-new-req').style.display='inline-flex';
+    render();
+  } catch(e) {
+    document.getElementById('login-err').style.display='block';
+  }
+}
+
+function logout() {
+  S = {role:null,name:null,password:null,requisitions:[],candidates:[],users:[],filter:'all',openReqs:new Set(),openCands:new Set()};
+  document.getElementById('login-wrap').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('pw-input').value='';
+  document.getElementById('login-err').style.display='none';
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function render() { renderStats(); renderReqs(); }
+
+function renderStats() {
+  const open = S.requisitions.filter(r=>r.status==='Open').length;
+  const noshow = S.candidates.filter(c=>c.noShow==='TRUE'||c.noShow===true).length;
+  const auction = S.candidates.filter(c=>c.auction==='TRUE'||c.auction===true).length;
+  const joined = S.candidates.filter(c=>c.stage==='Joined').length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-label">Open reqs</div><div class="stat-val">${open}</div></div>
+    <div class="stat"><div class="stat-label">No-shows</div><div class="stat-val" style="color:var(--red)">${noshow}</div></div>
+    <div class="stat"><div class="stat-label">In auction</div><div class="stat-val" style="color:var(--amber)">${auction}</div></div>
+    <div class="stat"><div class="stat-label">Joined</div><div class="stat-val" style="color:var(--green)">${joined}</div></div>`;
+}
+
+function renderReqs() {
+  const q = (document.getElementById('search-input')?.value||'').toLowerCase();
+  let reqs = S.requisitions;
+  if (S.filter==='auction') {
+    const ids = new Set(S.candidates.filter(c=>c.auction==='TRUE'||c.auction===true).map(c=>c.reqId));
+    reqs = reqs.filter(r=>ids.has(r.reqId));
+  } else if (S.filter!=='all') {
+    reqs = reqs.filter(r=>r.outlet===S.filter);
+  }
+  if (q) reqs = reqs.filter(r=>(r.role||'').toLowerCase().includes(q)||(r.outlet||'').toLowerCase().includes(q));
+
+  const list = document.getElementById('req-list');
+  if (!reqs.length) { list.innerHTML='<div class="empty-state"><i class="ti ti-clipboard-x"></i>No requisitions found.</div>'; return; }
+
+  list.innerHTML = reqs.map(req => {
+    const cands = S.candidates.filter(c=>c.reqId===req.reqId);
+    const filled = Number(req.headcountFilled)||0;
+    const total = Number(req.headcount)||1;
+    const isOpen = S.openReqs.has(req.reqId);
+    const hasAuction = cands.some(c=>c.auction==='TRUE'||c.auction===true);
+    const hasNoShow = cands.some(c=>c.noShow==='TRUE'||c.noShow===true);
+    const statusBadge = req.status==='Closed'
+      ? '<span class="badge b-closed">Closed</span>'
+      : hasAuction ? '<span class="badge b-auction"><i class="ti ti-gavel" style="font-size:10px"></i> Auction</span>'
+      : hasNoShow ? '<span class="badge b-noshow">No-show</span>'
+      : '<span class="badge b-open">Open</span>';
+    const urgBadge = req.priority==='Urgent'?'<span class="badge b-urgent">Urgent</span>':'';
+
+    // Auction boxes for ops/admin
+    const auctionBoxes = (S.role==='ops'||S.role==='admin')
+      ? cands.filter(c=>c.auction==='TRUE'||c.auction===true).map(c=>`
+        <div class="auction-box">
+          <div class="auction-title"><i class="ti ti-gavel" style="font-size:13px"></i> ${c.name} — available for your site</div>
+          <div class="auction-reason">Reason: ${c.auctionReason||'—'}</div>
+          <div class="auction-claims">
+            ${['Coffee?','Bask Poes','Bask ECR','SOAK'].filter(o=>o!==req.outlet).map(o=>`
+              <button class="btn btn-sm btn-amber" onclick="claimAuction('${c.candId}','${req.reqId}','${o}')">Claim for ${o}</button>
+            `).join('')}
+          </div>
+        </div>`).join('')
+      : '';
+
+    const candRows = cands.map(c => {
+      const initials = (c.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const isCOpen = S.openCands.has(c.candId);
+      return `<div>
+        <div class="cand-row" onclick="toggleCand('${c.candId}')">
+          <div class="cand-avatar">${initials}</div>
+          <div class="cand-name">${c.name||'—'}</div>
+          <div class="cand-detail">${c.sourceChannel||''}</div>
+          ${candBadge(c)}
+          <i class="ti ti-chevron-${isCOpen?'up':'down'}" style="font-size:13px;color:var(--text3)"></i>
+        </div>
+        ${isCOpen?candDetail(c,req):''}
+      </div>`;
+    }).join('');
+
+    const addCandBtn = (S.role==='hr'||S.role==='admin') && req.status==='Open'
+      ? `<button class="btn btn-sm btn-primary" onclick="openModal('cand','${req.reqId}')"><i class="ti ti-user-plus" style="font-size:12px"></i> Add candidate</button>` : '';
+
+    return `<div class="req-card">
+      <div class="req-header" onclick="toggleReq('${req.reqId}')">
+        <div class="req-info">
+          <div class="req-title">${req.role} <span style="color:var(--text3);font-weight:400;font-size:13px">— ${req.outlet}</span> ${urgBadge}</div>
+          <div class="req-sub">${req.department||''} · Raised by ${req.raisedBy} · Needed by ${req.neededBy||'—'}</div>
+        </div>
+        <span class="hc-pill">${filled}/${total} filled</span>
+        ${statusBadge}
+        <i class="ti ti-chevron-${isOpen?'up':'down'}" style="font-size:15px;color:var(--text3)"></i>
+      </div>
+      <div class="req-body ${isOpen?'open':''}">
+        ${auctionBoxes}
+        <div class="cand-list">
+          ${cands.length?candRows:'<div style="color:var(--text3);font-size:13px;padding:8px 0">No candidates yet.</div>'}
+          <div style="margin-top:10px">${addCandBtn}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function candBadge(c) {
+  if (c.noShow==='TRUE'||c.noShow===true) return '<span class="badge b-noshow">No-show</span>';
+  if (c.auction==='TRUE'||c.auction===true) return '<span class="badge b-auction">Auction</span>';
+  const m={Sourcing:'b-sourcing',Shortlist:'b-shortlist',Interview:'b-interview',Selected:'b-selected',Offer:'b-offer',Joined:'b-joined',Rejected:'b-rejected'};
+  return `<span class="badge ${m[c.stage]||'b-sourcing'}">${c.stage}</span>`;
+}
+
+function candDetail(c, req) {
+  const isHr = S.role==='hr'||S.role==='admin';
+  const isOps = S.role==='ops'||S.role==='admin';
+  const actions=[];
+  if (isHr) {
+    if (c.stage==='Sourcing') actions.push(`<button class="btn btn-sm btn-primary" onclick="advanceCand('${c.candId}','Shortlist')">Move to shortlist</button>`);
+    if (c.stage==='Shortlist') actions.push(`<button class="btn btn-sm btn-primary" onclick="advanceCand('${c.candId}','Interview')">Schedule interview</button>`);
+    if (c.stage==='Selected') actions.push(`<button class="btn btn-sm btn-primary" onclick="advanceCand('${c.candId}','Offer')">Send offer</button>`);
+    if (c.stage==='Offer') {
+      actions.push(`<button class="btn btn-sm btn-success" onclick="advanceCand('${c.candId}','Joined')">Mark joined</button>`);
+      actions.push(`<button class="btn btn-sm btn-danger" onclick="markNoShow('${c.candId}','Offer')">No-show (offer)</button>`);
+    }
+    if (c.stage==='Joined') actions.push(`<button class="btn btn-sm btn-danger" onclick="markNoShow('${c.candId}','Joining')">No-show (joining)</button>`);
+  }
+  if (isOps) {
+    if (c.stage==='Shortlist') actions.push(`<button class="btn btn-sm btn-danger" onclick="markNoShow('${c.candId}','Shortlist')">No-show (shortlist)</button>`);
+    if (c.stage==='Interview') {
+      actions.push(`<button class="btn btn-sm btn-success" onclick="advanceCand('${c.candId}','Selected')">Select</button>`);
+      actions.push(`<button class="btn btn-sm btn-danger" onclick="rejectCand('${c.candId}')">Reject</button>`);
+      actions.push(`<button class="btn btn-sm btn-amber" onclick="sendAuction('${c.candId}')">Send to auction</button>`);
+      actions.push(`<button class="btn btn-sm btn-danger" onclick="markNoShow('${c.candId}','Interview')">No-show (interview)</button>`);
+    }
+  }
+  return `<div style="background:var(--surface2);border-radius:var(--r);margin:4px 0 4px 42px;padding:12px">
+    <div class="detail-grid">
+      <div><div class="detail-key">Source</div><div class="detail-val">${c.sourceChannel||'—'}</div></div>
+      <div><div class="detail-key">Shortlist date</div><div class="detail-val">${c.shortlistDate||'—'}</div></div>
+      <div><div class="detail-key">Interview date</div><div class="detail-val">${c.interviewDate||'—'}</div></div>
+      <div><div class="detail-key">Interviewed by</div><div class="detail-val">${c.interviewBy||'—'}</div></div>
+      <div><div class="detail-key">Offered on</div><div class="detail-val">${c.offeredOn||'—'}</div></div>
+      <div><div class="detail-key">Joined on</div><div class="detail-val">${c.joinedOn||'—'}</div></div>
+    </div>
+    ${c.interviewNotes?`<div style="font-size:12px;color:var(--text2);margin-bottom:6px"><span style="color:var(--text3)">Notes:</span> ${c.interviewNotes}</div>`:''}
+    ${c.rejectionReason?`<div style="font-size:12px;color:var(--red);margin-bottom:6px"><span style="color:var(--text3)">Rejection:</span> ${c.rejectionReason}</div>`:''}
+    ${c.auctionReason?`<div style="font-size:12px;color:var(--amber);margin-bottom:6px"><span style="color:var(--text3)">Auction reason:</span> ${c.auctionReason}</div>`:''}
+    ${(c.noShow==='TRUE'||c.noShow===true)?`<div style="font-size:12px;color:var(--red);margin-bottom:6px">⚠ No-show at ${c.noShowStage} stage</div>`:''}
+    ${actions.length?`<div class="actions-row">${actions.join('')}</div>`:''}
+  </div>`;
+}
+
+function renderDash() {
+  const reqs = S.requisitions;
+  const cands = S.candidates;
+  const outlets = ['Coffee?','Bask Poes','Bask ECR','SOAK'];
+  const managers = {'Coffee?':'Harry','Bask Poes':'Tushar','Bask ECR':'Sahil','SOAK':'Kuldeep'};
+
+  const noShowRows = outlets.map(o=>{
+    const ids = reqs.filter(r=>r.outlet===o).map(r=>r.reqId);
+    const oc = cands.filter(c=>ids.includes(c.reqId));
+    const ns = oc.filter(c=>c.noShow==='TRUE'||c.noShow===true).length;
+    const rate = oc.length ? Math.round((1-ns/oc.length)*100) : 100;
+    const color = rate>80?'var(--green)':rate>60?'var(--amber)':'var(--red)';
+    return `<tr>
+      <td>${o}</td><td>${managers[o]}</td><td>${oc.length}</td>
+      <td style="color:var(--red)">${ns}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">
+        <div class="progress-bar"><div class="progress-fill" style="width:${rate}%;background:${color}"></div></div>
+        <span style="font-size:12px;color:var(--text2)">${rate}%</span>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  const ttf = cands.filter(c=>c.stage==='Joined').map(c=>{
+    const req = reqs.find(r=>r.reqId===c.reqId);
+    if (!req||!req.raisedOn||!c.joinedOn) return null;
+    const days = Math.round((new Date(c.joinedOn)-new Date(req.raisedOn))/86400000);
+    return `<tr><td>${c.name}</td><td>${req.role}</td><td>${req.outlet}</td><td>${days}d</td></tr>`;
+  }).filter(Boolean).join('');
+
+  const stageCount = {Sourcing:0,Shortlist:0,Interview:0,Selected:0,Offer:0,Joined:0,Rejected:0};
+  cands.forEach(c=>{ if(stageCount[c.stage]!==undefined) stageCount[c.stage]++; });
+
+  document.getElementById('dash-content').innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total reqs</div><div class="stat-val">${reqs.length}</div></div>
+      <div class="stat"><div class="stat-label">Open</div><div class="stat-val">${reqs.filter(r=>r.status==='Open').length}</div></div>
+      <div class="stat"><div class="stat-label">Closed</div><div class="stat-val" style="color:var(--green)">${reqs.filter(r=>r.status==='Closed').length}</div></div>
+      <div class="stat"><div class="stat-label">Total candidates</div><div class="stat-val">${cands.length}</div></div>
+    </div>
+    <div class="section-card">
+      <table class="dash-table">
+        <thead><tr><th>Outlet</th><th>Manager</th><th>Candidates</th><th>No-shows</th><th>Attendance rate</th></tr></thead>
+        <tbody>${noShowRows}</tbody>
+      </table>
+    </div>
+    <div class="section-card">
+      <table class="dash-table">
+        <thead><tr><th>Stage</th><th>Candidates</th></tr></thead>
+        <tbody>${Object.entries(stageCount).map(([s,n])=>`<tr><td>${s}</td><td>${n}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    ${ttf?`<div class="section-card"><table class="dash-table">
+      <thead><tr><th>Candidate</th><th>Role</th><th>Outlet</th><th>Days to fill</th></tr></thead>
+      <tbody>${ttf}</tbody></table></div>`:''}`;
+}
+
+function renderUsers() {
+  const users = S.users;
+  document.getElementById('users-content').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+      <button class="btn btn-primary" onclick="openModal('user')"><i class="ti ti-user-plus" style="font-size:13px"></i> Add user</button>
+    </div>
+    ${users.map(u=>{
+      const initials = u.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const active = u.active==='TRUE'||u.active===true;
+      return `<div class="user-card">
+        <div class="user-row">
+          <div class="user-avatar" style="${!active?'opacity:.4':''}">${initials}</div>
+          <div class="user-info">
+            <div class="user-name">${u.name} ${!active?'<span style="font-size:11px;color:var(--text3)">(inactive)</span>':''}</div>
+            <div class="user-pw">Password: ${u.password}</div>
+          </div>
+          <span class="badge b-${u.role}">${u.role.toUpperCase()}</span>
+          <div class="user-actions">
+            <button class="btn btn-sm" onclick="openModal('editUser','${u.userId}')"><i class="ti ti-edit" style="font-size:12px"></i> Edit</button>
+            <button class="btn btn-sm ${active?'btn-danger':'btn-success'}" onclick="toggleUserActive('${u.userId}','${active}')">
+              ${active?'Deactivate':'Activate'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+// ── INTERACTIONS ─────────────────────────────────────────────
+function toggleReq(id) { S.openReqs.has(id)?S.openReqs.delete(id):S.openReqs.add(id); renderReqs(); }
+function toggleCand(id) { S.openCands.has(id)?S.openCands.delete(id):S.openCands.add(id); renderReqs(); }
+function setFilter(f,btn) { S.filter=f; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderReqs(); }
+
+function showTab(tab,btn) {
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  ['reqs','dash','users'].forEach(t=>{ const el=document.getElementById('tab-'+t); if(el) el.style.display=t===tab?'block':'none'; });
+  if (tab==='dash') renderDash();
+  if (tab==='users') { loadUsers(); }
+}
+
+async function loadUsers() {
+  if (S.role!=='admin') return;
+  const data = await api('getUsers');
+  S.users = data.users||[];
+  renderUsers();
+}
+
+// ── MODALS ───────────────────────────────────────────────────
+function openModal(type, id) {
+  const m = document.getElementById('modal-content');
+  if (type==='req') {
+    m.innerHTML=`<h3>New requisition</h3>
+      <div class="form-2col">
+        <div class="form-row"><label>Role title *</label><input id="m-role" placeholder="e.g. Bartender"></div>
+        <div class="form-row"><label>Department</label><select id="m-dept"><option>Floor</option><option>Bar</option><option>Kitchen</option><option>Support</option></select></div>
+      </div>
+      <div class="form-2col">
+        <div class="form-row"><label>Outlet *</label><select id="m-outlet"><option>Coffee?</option><option>Bask Poes</option><option>Bask ECR</option><option>SOAK</option></select></div>
+        <div class="form-row"><label>Priority</label><select id="m-priority"><option>Normal</option><option>Urgent</option></select></div>
+      </div>
+      <div class="form-2col">
+        <div class="form-row"><label>Headcount *</label><input id="m-hc" type="number" min="1" value="1"></div>
+        <div class="form-row"><label>Needed by</label><input id="m-date" type="date"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeOverlay()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitReq()">Create</button>
+      </div>`;
+  } else if (type==='cand') {
+    m.innerHTML=`<h3>Add candidate</h3>
+      <input type="hidden" id="m-reqid" value="${id}">
+      <div class="form-row"><label>Candidate name *</label><input id="m-cname" placeholder="Full name"></div>
+      <div class="form-2col">
+        <div class="form-row"><label>Source</label><select id="m-source"><option>Naukri</option><option>Referral</option><option>Walk-in</option><option>Instagram</option><option>LinkedIn</option><option>Other</option></select></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeOverlay()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCand()">Add</button>
+      </div>`;
+  } else if (type==='user') {
+    m.innerHTML=`<h3>Add user</h3>
+      <div class="form-2col">
+        <div class="form-row"><label>Name *</label><input id="m-uname" placeholder="Full name"></div>
+        <div class="form-row"><label>Role</label><select id="m-urole"><option value="ops">Ops</option><option value="hr">HR</option><option value="admin">Admin</option></select></div>
+      </div>
+      <div class="form-row"><label>Password *</label><input id="m-upw" placeholder="e.g. name1234"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeOverlay()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitUser()">Create user</button>
+      </div>`;
+  } else if (type==='editUser') {
+    const u = S.users.find(x=>x.userId===id);
+    if (!u) return;
+    m.innerHTML=`<h3>Edit user — ${u.name}</h3>
+      <div class="form-2col">
+        <div class="form-row"><label>Name</label><input id="m-uname" value="${u.name}"></div>
+        <div class="form-row"><label>Role</label><select id="m-urole">
+          <option value="ops" ${u.role==='ops'?'selected':''}>Ops</option>
+          <option value="hr" ${u.role==='hr'?'selected':''}>HR</option>
+          <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+        </select></div>
+      </div>
+      <div class="form-row"><label>New password (leave blank to keep current)</label><input id="m-upw" placeholder="Leave blank to keep"></div>
+      <input type="hidden" id="m-uid" value="${id}">
+      <div class="modal-actions">
+        <button class="btn" onclick="closeOverlay()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEditUser()">Save</button>
+      </div>`;
+  }
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeOverlay(e) {
+  if (!e||e.target===document.getElementById('overlay')) document.getElementById('overlay').classList.remove('open');
+}
+
+async function submitReq() {
+  const role=document.getElementById('m-role').value.trim();
+  if (!role) return toast('Enter role title');
+  try {
+    await api('addReq',{role,outlet:document.getElementById('m-outlet').value,department:document.getElementById('m-dept').value,priority:document.getElementById('m-priority').value,headcount:document.getElementById('m-hc').value,neededBy:document.getElementById('m-date').value});
+    closeOverlay(); await refresh(); toast('Requisition created');
+  } catch(e){toast(e.message);}
+}
+
+async function submitCand() {
+  const name=document.getElementById('m-cname').value.trim();
+  const reqId=document.getElementById('m-reqid').value;
+  if (!name) return toast('Enter candidate name');
+  try {
+    await api('addCandidate',{reqId,name,sourceChannel:document.getElementById('m-source').value});
+    closeOverlay(); await refresh(); toast('Candidate added');
+  } catch(e){toast(e.message);}
+}
+
+async function submitUser() {
+  const name=document.getElementById('m-uname').value.trim();
+  const pw=document.getElementById('m-upw').value.trim();
+  if (!name||!pw) return toast('Fill in name and password');
+  try {
+    await api('addUser',{name,role:document.getElementById('m-urole').value,newPassword:pw});
+    closeOverlay(); await loadUsers(); toast('User created');
+  } catch(e){toast(e.message);}
+}
+
+async function submitEditUser() {
+  const uid=document.getElementById('m-uid').value;
+  const pw=document.getElementById('m-upw').value.trim();
+  try {
+    await api('updateUser',{userId:uid,name:document.getElementById('m-uname').value.trim(),role:document.getElementById('m-urole').value,...(pw?{newPassword:pw}:{})});
+    closeOverlay(); await loadUsers(); toast('User updated');
+  } catch(e){toast(e.message);}
+}
+
+async function toggleUserActive(userId, currentlyActive) {
+  const active = currentlyActive==='true' ? false : true;
+  try {
+    await api('updateUser',{userId,active,note:active?'Activated':'Deactivated'});
+    await loadUsers(); toast(active?'User activated':'User deactivated');
+  } catch(e){toast(e.message);}
+}
+
+// ── CANDIDATE ACTIONS ────────────────────────────────────────
+async function advanceCand(candId, stage) {
+  const extra={};
+  try {
+    if (stage==='Shortlist') extra.shortlistDate=prompt('Shortlist date (YYYY-MM-DD):')||'';
+    if (stage==='Interview') extra.interviewDate=prompt('Interview date (YYYY-MM-DD):')||'';
+    if (stage==='Selected') { extra.interviewBy=prompt('Interviewed by:')||''; extra.interviewNotes=prompt('Interview notes (optional):')||''; }
+    if (stage==='Offer') extra.offeredOn=new Date().toISOString().split('T')[0];
+    if (stage==='Joined') extra.joinedOn=prompt('Joining date (YYYY-MM-DD):')||new Date().toISOString().split('T')[0];
+    await api('updateCandidate',{candId,stage,action:'Stage → '+stage,...extra});
+    await refresh(); toast('Updated');
+  } catch(e){toast(e.message);}
+}
+
+async function rejectCand(candId) {
+  const reason=prompt('Rejection reason:'); if(reason===null) return;
+  try { await api('updateCandidate',{candId,stage:'Rejected',rejectionReason:reason,action:'Rejected',note:reason}); await refresh(); toast('Rejected'); } catch(e){toast(e.message);}
+}
+
+async function sendAuction(candId) {
+  const reason=prompt('Why is this candidate being sent to auction?'); if(!reason) return;
+  try { await api('updateCandidate',{candId,auction:true,auctionReason:reason,action:'Sent to auction',note:reason}); await refresh(); toast('Sent to auction'); } catch(e){toast(e.message);}
+}
+
+async function markNoShow(candId, stage) {
+  if (!confirm(`Mark as no-show at ${stage} stage?`)) return;
+  try { await api('updateCandidate',{candId,noShow:true,noShowStage:stage,action:'No-show',note:`No-show at ${stage}`}); await refresh(); toast('Marked as no-show'); } catch(e){toast(e.message);}
+}
+
+async function claimAuction(candId, origReqId, newOutlet) {
+  if (!confirm(`Claim this candidate for ${newOutlet}?`)) return;
+  try {
+    const newReq = S.requisitions.find(r=>r.outlet===newOutlet&&r.status==='Open');
+    await api('updateCandidate',{candId,auction:false,auctionReason:'',reqId:newReq?newReq.reqId:origReqId,stage:'Interview',action:'Claimed from auction',note:`Claimed by ${newOutlet}`});
+    await refresh(); toast(`Claimed for ${newOutlet}`);
+  } catch(e){toast(e.message);}
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+async function refresh() {
+  const data=await api('getAll');
+  S.requisitions=data.requisitions||[];
+  S.candidates=data.candidates||[];
+  render();
+}
+
+function setLoading(on) { document.getElementById('loading').style.display=on?'flex':'none'; }
+function toast(msg) { const el=document.getElementById('toast'); el.textContent=msg; el.style.display='block'; setTimeout(()=>el.style.display='none',2500); }
+</script>
+</body>
+</html>
