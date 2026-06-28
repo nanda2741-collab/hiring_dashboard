@@ -236,12 +236,11 @@ let S = {
 async function api(action, params={}) {
   setLoading(true);
   try {
-    const res = await fetch(API_URL, {
-      method:'POST', mode:'cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action, password:S.password, ...params})
-    });
-    const data = await res.json();
+    const args = {action, password:S.password, ...params};
+    const qs = Object.entries(args).map(([k,v])=>k+'='+encodeURIComponent(typeof v==='object'?JSON.stringify(v):v)).join('&');
+    const res = await fetch(API_URL+'?'+qs, {method:'GET', mode:'no-cors'});
+    const text = await res.text();
+    const data = JSON.parse(text);
     if (!data.ok) throw new Error(data.error||'Request failed');
     return data;
   } finally { setLoading(false); }
