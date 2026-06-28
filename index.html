@@ -224,7 +224,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="toast" id="toast"></div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycby2XVpVBaN7VHqh7vGtM390bu2wiGo94ezoDkkATyxYwNW4JgZJfsK61scAcmc2weBMnw/exec';
+const API_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
 
 let S = {
   role: null, name: null, password: null,
@@ -236,14 +236,17 @@ let S = {
 async function api(action, params={}) {
   setLoading(true);
   try {
-    const args = {action, password:S.password, ...params};
-    const qs = Object.entries(args).map(([k,v])=>k+'='+encodeURIComponent(typeof v==='object'?JSON.stringify(v):v)).join('&');
-    const res = await fetch(API_URL+'?'+qs, {method:'GET', mode:'cors'});
+    const res = await fetch(API_URL, {
+      method:'POST', mode:'cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, password:S.password, ...params})
+    });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error||'Request failed');
     return data;
   } finally { setLoading(false); }
 }
+
 // ── AUTH ─────────────────────────────────────────────────────
 async function doLogin() {
   const pw = document.getElementById('pw-input').value.trim();
@@ -253,6 +256,7 @@ async function doLogin() {
     S.password = pw;
     S.role = data.user.role;
     S.name = data.user.name;
+    S.outlets = data.user.outlets || ['Coffee?','Bask Poes','Bask ECR','SOAK'];
     S.requisitions = data.requisitions||[];
     S.candidates = data.candidates||[];
     document.getElementById('login-wrap').style.display='none';
@@ -483,6 +487,37 @@ function renderDash() {
       <tbody>${ttf}</tbody></table></div>`:''}`;
 }
 
+const OUTLETS = ['Coffee?','Bask Poes','Bask ECR','SOAK'];
+
+function outletCheckboxes(selected, prefix) {
+  const sel = (selected||'All'===selected?[]:((selected||'')).split(',').map(x=>x.trim()));
+  const allChecked = !selected || selected==='All';
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+    <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="${prefix}-all" onchange="toggleAllOutlets('${prefix}')" ${allChecked?'checked':''}> All outlets
+    </label>
+    ${OUTLETS.map(o=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+      <input type="checkbox" class="${prefix}-outlet" value="${o}" onchange="syncAllOutlets('${prefix}')" ${allChecked||sel.includes(o)?'checked':''}> ${o}
+    </label>`).join('')}
+  </div>`;
+}
+
+function getSelectedOutlets(prefix) {
+  if (document.getElementById(prefix+'-all')?.checked) return 'All';
+  const checked = [...document.querySelectorAll('.'+prefix+'-outlet:checked')].map(el=>el.value);
+  return checked.join(',') || '';
+}
+
+function toggleAllOutlets(prefix) {
+  const c = document.getElementById(prefix+'-all').checked;
+  document.querySelectorAll('.'+prefix+'-outlet').forEach(el=>el.checked=c);
+}
+
+function syncAllOutlets(prefix) {
+  const all = [...document.querySelectorAll('.'+prefix+'-outlet')];
+  document.getElementById(prefix+'-all').checked = all.every(el=>el.checked);
+}
+
 function renderUsers() {
   const users = S.users;
   document.getElementById('users-content').innerHTML = `
@@ -492,12 +527,14 @@ function renderUsers() {
     ${users.map(u=>{
       const initials = u.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
       const active = u.active==='TRUE'||u.active===true;
+      const outlets = (!u.outlets||u.outlets==='All'||u.outlets==='') ? 'All outlets' : u.outlets;
       return `<div class="user-card">
         <div class="user-row">
           <div class="user-avatar" style="${!active?'opacity:.4':''}">${initials}</div>
           <div class="user-info">
             <div class="user-name">${u.name} ${!active?'<span style="font-size:11px;color:var(--text3)">(inactive)</span>':''}</div>
             <div class="user-pw">Password: ${u.password}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">${outlets}</div>
           </div>
           <span class="badge b-${u.role}">${u.role.toUpperCase()}</span>
           <div class="user-actions">
@@ -540,7 +577,7 @@ function openModal(type, id) {
         <div class="form-row"><label>Department</label><select id="m-dept"><option>Floor</option><option>Bar</option><option>Kitchen</option><option>Support</option></select></div>
       </div>
       <div class="form-2col">
-        <div class="form-row"><label>Outlet *</label><select id="m-outlet"><option>Coffee?</option><option>Bask Poes</option><option>Bask ECR</option><option>SOAK</option></select></div>
+        <div class="form-row"><label>Outlet *</label><select id="m-outlet">${S.outlets.map(o=>`<option>${o}</option>`).join('')}</select></div>
         <div class="form-row"><label>Priority</label><select id="m-priority"><option>Normal</option><option>Urgent</option></select></div>
       </div>
       <div class="form-2col">
@@ -566,9 +603,10 @@ function openModal(type, id) {
     m.innerHTML=`<h3>Add user</h3>
       <div class="form-2col">
         <div class="form-row"><label>Name *</label><input id="m-uname" placeholder="Full name"></div>
-        <div class="form-row"><label>Role</label><select id="m-urole"><option value="ops">Ops</option><option value="hr">HR</option><option value="admin">Admin</option></select></div>
+        <div class="form-row"><label>Role</label><select id="m-urole" onchange="toggleOutletVis('new')"><option value="ops">Ops</option><option value="hr">HR</option><option value="admin">Admin</option></select></div>
       </div>
       <div class="form-row"><label>Password *</label><input id="m-upw" placeholder="e.g. name1234"></div>
+      <div class="form-row" id="new-outlet-row"><label>Outlet access</label>${outletCheckboxes('All','new')}</div>
       <div class="modal-actions">
         <button class="btn" onclick="closeOverlay()">Cancel</button>
         <button class="btn btn-primary" onclick="submitUser()">Create user</button>
@@ -576,16 +614,18 @@ function openModal(type, id) {
   } else if (type==='editUser') {
     const u = S.users.find(x=>x.userId===id);
     if (!u) return;
+    const showOutlets = u.role==='ops';
     m.innerHTML=`<h3>Edit user — ${u.name}</h3>
       <div class="form-2col">
         <div class="form-row"><label>Name</label><input id="m-uname" value="${u.name}"></div>
-        <div class="form-row"><label>Role</label><select id="m-urole">
+        <div class="form-row"><label>Role</label><select id="m-urole" onchange="toggleOutletVis('edit')">
           <option value="ops" ${u.role==='ops'?'selected':''}>Ops</option>
           <option value="hr" ${u.role==='hr'?'selected':''}>HR</option>
           <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
         </select></div>
       </div>
-      <div class="form-row"><label>New password (leave blank to keep current)</label><input id="m-upw" placeholder="Leave blank to keep"></div>
+      <div class="form-row"><label>New password (leave blank to keep)</label><input id="m-upw" placeholder="Leave blank to keep"></div>
+      <div class="form-row" id="edit-outlet-row" style="${showOutlets?'':'display:none'}"><label>Outlet access</label>${outletCheckboxes(u.outlets||'All','edit')}</div>
       <input type="hidden" id="m-uid" value="${id}">
       <div class="modal-actions">
         <button class="btn" onclick="closeOverlay()">Cancel</button>
@@ -618,12 +658,20 @@ async function submitCand() {
   } catch(e){toast(e.message);}
 }
 
+function toggleOutletVis(prefix) {
+  const role = document.getElementById('m-urole').value;
+  const row = document.getElementById(prefix+'-outlet-row');
+  if (row) row.style.display = role==='ops' ? '' : 'none';
+}
+
 async function submitUser() {
   const name=document.getElementById('m-uname').value.trim();
   const pw=document.getElementById('m-upw').value.trim();
+  const role=document.getElementById('m-urole').value;
   if (!name||!pw) return toast('Fill in name and password');
+  const outlets = role==='ops' ? getSelectedOutlets('new') : 'All';
   try {
-    await api('addUser',{name,role:document.getElementById('m-urole').value,newPassword:pw});
+    await api('addUser',{name,role,newPassword:pw,outlets});
     closeOverlay(); await loadUsers(); toast('User created');
   } catch(e){toast(e.message);}
 }
@@ -631,8 +679,10 @@ async function submitUser() {
 async function submitEditUser() {
   const uid=document.getElementById('m-uid').value;
   const pw=document.getElementById('m-upw').value.trim();
+  const role=document.getElementById('m-urole').value;
+  const outlets = role==='ops' ? getSelectedOutlets('edit') : 'All';
   try {
-    await api('updateUser',{userId:uid,name:document.getElementById('m-uname').value.trim(),role:document.getElementById('m-urole').value,...(pw?{newPassword:pw}:{})});
+    await api('updateUser',{userId:uid,name:document.getElementById('m-uname').value.trim(),role,outlets,...(pw?{newPassword:pw}:{})});
     closeOverlay(); await loadUsers(); toast('User updated');
   } catch(e){toast(e.message);}
 }
@@ -646,17 +696,58 @@ async function toggleUserActive(userId, currentlyActive) {
 }
 
 // ── CANDIDATE ACTIONS ────────────────────────────────────────
+function parseAndValidateDate(input, label, minDate, maxDate) {
+  if (!input || !input.trim()) throw new Error(label + ': please enter a date.');
+  const clean = input.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) throw new Error(label + ': use YYYY-MM-DD format (e.g. 2025-07-15).');
+  const [y,m,d] = clean.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  if (date.getFullYear()!==y || date.getMonth()!==m-1 || date.getDate()!==d)
+    throw new Error(label + ': ' + clean + ' is not a valid calendar date.');
+  if (minDate && date < new Date(minDate))
+    throw new Error(label + ' cannot be before ' + minDate + '.');
+  if (maxDate && date > new Date(maxDate))
+    throw new Error(label + ' cannot be in the future.');
+  return clean;
+}
+
 async function advanceCand(candId, stage) {
   const extra={};
   try {
-    if (stage==='Shortlist') extra.shortlistDate=prompt('Shortlist date (YYYY-MM-DD):')||'';
-    if (stage==='Interview') extra.interviewDate=prompt('Interview date (YYYY-MM-DD):')||'';
-    if (stage==='Selected') { extra.interviewBy=prompt('Interviewed by:')||''; extra.interviewNotes=prompt('Interview notes (optional):')||''; }
-    if (stage==='Offer') extra.offeredOn=new Date().toISOString().split('T')[0];
-    if (stage==='Joined') extra.joinedOn=prompt('Joining date (YYYY-MM-DD):')||new Date().toISOString().split('T')[0];
+    // Find the candidate and its requisition for cross-field validation
+    const cand = S.candidates.find(c=>c.candId===candId);
+    const req = cand ? S.requisitions.find(r=>r.reqId===cand.reqId) : null;
+    const reqDate = req ? req.raisedOn : null;
+    const today = new Date().toISOString().split('T')[0];
+
+    if (stage==='Shortlist') {
+      const input = prompt('Shortlist date (YYYY-MM-DD):');
+      if (input===null) return; // cancelled
+      extra.shortlistDate = parseAndValidateDate(input, 'Shortlist date', reqDate, today);
+    }
+    if (stage==='Interview') {
+      const input = prompt('Interview date (YYYY-MM-DD):');
+      if (input===null) return;
+      const minDate = cand && cand.shortlistDate ? cand.shortlistDate : reqDate;
+      extra.interviewDate = parseAndValidateDate(input, 'Interview date', minDate, today);
+    }
+    if (stage==='Selected') {
+      extra.interviewBy = prompt('Interviewed by:')||'';
+      extra.interviewNotes = prompt('Interview notes (optional):')||'';
+    }
+    if (stage==='Offer') {
+      extra.offeredOn = today;
+    }
+    if (stage==='Joined') {
+      const input = prompt('Joining date (YYYY-MM-DD):');
+      if (input===null) return;
+      const minDate = cand && cand.offeredOn ? cand.offeredOn : reqDate;
+      extra.joinedOn = parseAndValidateDate(input, 'Joining date', minDate, today);
+    }
+
     await api('updateCandidate',{candId,stage,action:'Stage → '+stage,...extra});
     await refresh(); toast('Updated');
-  } catch(e){toast(e.message);}
+  } catch(e){ toast(e.message); }
 }
 
 async function rejectCand(candId) {
