@@ -226,11 +226,9 @@ let S = {
 async function api(action, params={}) {
   setLoading(true);
   try {
-    const res = await fetch(API_URL, {
-      method:'POST', mode:'cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action, password:S.password, ...params})
-    });
+    const args = {action, password:S.password, ...params};
+    const qs = Object.entries(args).map(([k,v])=>k+'='+encodeURIComponent(typeof v==='object'?JSON.stringify(v):v)).join('&');
+    const res = await fetch(API_URL+'?'+qs);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error||'Request failed');
     return data;
