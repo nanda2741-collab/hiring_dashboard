@@ -198,17 +198,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
     <div id="tab-reqs">
       <div class="stats" id="stats"></div>
-      <div class="toolbar">
-        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
-        <button class="filter-btn" onclick="setFilter('Coffee?',this)">Coffee?</button>
-        <button class="filter-btn" onclick="setFilter('Bask Poes',this)">Bask Poes</button>
-        <button class="filter-btn" onclick="setFilter('Bask ECR',this)">Bask ECR</button>
-        <button class="filter-btn" onclick="setFilter('SOAK',this)">SOAK</button>
-        <button class="filter-btn" onclick="setFilter('auction',this)"><i class="ti ti-gavel" style="font-size:12px"></i> Auction</button>
-        <div class="spacer"></div>
-        <input class="search" type="text" placeholder="Search role…" oninput="renderReqs()" id="search-input">
-        <button class="btn btn-primary" id="btn-new-req" onclick="openModal('req')" style="display:none"><i class="ti ti-plus" style="font-size:13px"></i> New requisition</button>
-      </div>
+      <div class="toolbar" id="toolbar"></div>
       <div id="req-list"></div>
     </div>
 
@@ -236,14 +226,17 @@ let S = {
 async function api(action, params={}) {
   setLoading(true);
   try {
-    const args = {action, password:S.password, ...params};
-    const qs = Object.entries(args).map(([k,v])=>k+'='+encodeURIComponent(typeof v==='object'?JSON.stringify(v):v)).join('&');
-    const res = await fetch(API_URL+'?'+qs);
+    const res = await fetch(API_URL, {
+      method:'POST', mode:'cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, password:S.password, ...params})
+    });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error||'Request failed');
     return data;
   } finally { setLoading(false); }
 }
+
 // ── AUTH ─────────────────────────────────────────────────────
 async function doLogin() {
   const pw = document.getElementById('pw-input').value.trim();
@@ -269,9 +262,8 @@ async function doLogin() {
       const tabs = document.getElementById('tabs');
       tabs.innerHTML += '<button class="tab" onclick="showTab(\'users\',this)">Users</button>';
     }
-    // Show new req button for all roles
-    document.getElementById('btn-new-req').style.display='inline-flex';
     render();
+    startAutoRefresh();
   } catch(e) {
     document.getElementById('login-err').style.display='block';
   }
@@ -300,8 +292,23 @@ function renderStats() {
     <div class="stat"><div class="stat-label">Joined</div><div class="stat-val" style="color:var(--green)">${joined}</div></div>`;
 }
 
+function renderToolbar() {
+  const outlets = S.outlets || ['Coffee?','Bask Poes','Bask ECR','SOAK'];
+  const activeFilter = S.filter;
+  document.getElementById('toolbar').innerHTML = `
+    <button class="filter-btn ${activeFilter==='all'?'active':''}" onclick="setFilter('all',this)">All</button>
+    ${outlets.map(o=>`<button class="filter-btn ${activeFilter===o?'active':''}" onclick="setFilter('${o}',this)">${o}</button>`).join('')}
+    <button class="filter-btn ${activeFilter==='auction'?'active':''}" onclick="setFilter('auction',this)"><i class="ti ti-gavel" style="font-size:12px"></i> Auction</button>
+    <div class="spacer"></div>
+    <input class="search" type="text" placeholder="Search role…" oninput="renderReqs()" id="search-input" value="${(S.searchQ||'')}">
+    <button class="btn btn-primary" onclick="openModal('req')"><i class="ti ti-plus" style="font-size:13px"></i> New requisition</button>
+  `;
+}
+
 function renderReqs() {
+  renderToolbar();
   const q = (document.getElementById('search-input')?.value||'').toLowerCase();
+  S.searchQ = q;
   let reqs = S.requisitions;
   if (S.filter==='auction') {
     const ids = new Set(S.candidates.filter(c=>c.auction==='TRUE'||c.auction===true).map(c=>c.reqId));
@@ -719,17 +726,28 @@ async function toggleUserActive(userId, currentlyActive) {
 }
 
 // ── CANDIDATE ACTIONS ────────────────────────────────────────
+function todayIST() {
+  // Use IST (UTC+5:30) to avoid date rollback issues at night
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+  return ist.toISOString().split('T')[0];
+}
+
 function parseAndValidateDate(input, label, minDate, maxDate) {
   if (!input || !input.trim()) throw new Error(label + ': please enter a date.');
   const clean = input.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) throw new Error(label + ': use YYYY-MM-DD format (e.g. 2025-07-15).');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) throw new Error(label + ': use YYYY-MM-DD format (e.g. 2026-06-29).');
   const [y,m,d] = clean.split('-').map(Number);
   const date = new Date(y, m-1, d);
   if (date.getFullYear()!==y || date.getMonth()!==m-1 || date.getDate()!==d)
     throw new Error(label + ': ' + clean + ' is not a valid calendar date.');
-  if (minDate && date < new Date(minDate))
-    throw new Error(label + ' cannot be before ' + minDate + '.');
-  if (maxDate && date > new Date(maxDate))
+  if (minDate) {
+    // Parse minDate as local date to avoid timezone shift
+    const [my,mm,md] = minDate.split('T')[0].split('-').map(Number);
+    const min = new Date(my, mm-1, md);
+    if (date < min) throw new Error(label + ' cannot be before ' + minDate.split('T')[0] + '.');
+  }
+  if (maxDate && clean > maxDate)
     throw new Error(label + ' cannot be in the future.');
   return clean;
 }
@@ -741,7 +759,7 @@ async function advanceCand(candId, stage) {
     const cand = S.candidates.find(c=>c.candId===candId);
     const req = cand ? S.requisitions.find(r=>r.reqId===cand.reqId) : null;
     const reqDate = req ? req.raisedOn : null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayIST();
 
     if (stage==='Shortlist') {
       const input = prompt('Shortlist date (YYYY-MM-DD):');
@@ -803,6 +821,18 @@ async function refresh() {
   S.requisitions=data.requisitions||[];
   S.candidates=data.candidates||[];
   render();
+}
+
+function startAutoRefresh() {
+  // Refresh data every 30 seconds silently
+  setInterval(async () => {
+    try {
+      const data = await api('getAll');
+      S.requisitions = data.requisitions||[];
+      S.candidates = data.candidates||[];
+      render();
+    } catch(e) { /* silent fail — don't show error on background refresh */ }
+  }, 30000);
 }
 
 function setLoading(on) { document.getElementById('loading').style.display=on?'flex':'none'; }
