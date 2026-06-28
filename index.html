@@ -784,31 +784,31 @@ async function advanceCand(candId, stage) {
       extra.joinedOn = parseAndValidateDate(input, 'Joining date', minDate, today);
     }
 
-    await api('updateCandidate',{candId,stage,action:'Stage → '+stage,...extra});
+    await api('updateCandidate',{candId,stage,logAction:'Stage → '+stage,...extra});
     await refresh(); toast('Updated');
   } catch(e){ toast(e.message); }
 }
 
 async function rejectCand(candId) {
   const reason=prompt('Rejection reason:'); if(reason===null) return;
-  try { await api('updateCandidate',{candId,stage:'Rejected',rejectionReason:reason,action:'Rejected',note:reason}); await refresh(); toast('Rejected'); } catch(e){toast(e.message);}
+  try { await api('updateCandidate',{candId,stage:'Rejected',rejectionReason:reason,logAction:'Rejected',note:reason}); await refresh(); toast('Rejected'); } catch(e){toast(e.message);}
 }
 
 async function sendAuction(candId) {
   const reason=prompt('Why is this candidate being sent to auction?'); if(!reason) return;
-  try { await api('updateCandidate',{candId,auction:true,auctionReason:reason,action:'Sent to auction',note:reason}); await refresh(); toast('Sent to auction'); } catch(e){toast(e.message);}
+  try { await api('updateCandidate',{candId,auction:true,auctionReason:reason,logAction:'Sent to auction',note:reason}); await refresh(); toast('Sent to auction'); } catch(e){toast(e.message);}
 }
 
 async function markNoShow(candId, stage) {
   if (!confirm(`Mark as no-show at ${stage} stage?`)) return;
-  try { await api('updateCandidate',{candId,noShow:true,noShowStage:stage,action:'No-show',note:`No-show at ${stage}`}); await refresh(); toast('Marked as no-show'); } catch(e){toast(e.message);}
+  try { await api('updateCandidate',{candId,noShow:true,noShowStage:stage,logAction:'No-show',note:`No-show at ${stage}`}); await refresh(); toast('Marked as no-show'); } catch(e){toast(e.message);}
 }
 
 async function claimAuction(candId, origReqId, newOutlet) {
   if (!confirm(`Claim this candidate for ${newOutlet}?`)) return;
   try {
     const newReq = S.requisitions.find(r=>r.outlet===newOutlet&&r.status==='Open');
-    await api('updateCandidate',{candId,auction:false,auctionReason:'',reqId:newReq?newReq.reqId:origReqId,stage:'Interview',action:'Claimed from auction',note:`Claimed by ${newOutlet}`});
+    await api('updateCandidate',{candId,auction:false,auctionReason:'',reqId:newReq?newReq.reqId:origReqId,stage:'Interview',logAction:'Claimed from auction',note:`Claimed by ${newOutlet}`});
     await refresh(); toast(`Claimed for ${newOutlet}`);
   } catch(e){toast(e.message);}
 }
