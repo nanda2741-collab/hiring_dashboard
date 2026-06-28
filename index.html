@@ -224,7 +224,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="toast" id="toast"></div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycby2XVpVBaN7VHqh7vGtM390bu2wiGo94ezoDkkATyxYwNW4JgZJfsK61scAcmc2weBMnw/exec';
+const API_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
 
 let S = {
   role: null, name: null, password: null,
@@ -236,14 +236,17 @@ let S = {
 async function api(action, params={}) {
   setLoading(true);
   try {
-    const args = {action, password:S.password, ...params};
-    const qs = Object.entries(args).map(([k,v])=>k+'='+encodeURIComponent(typeof v==='object'?JSON.stringify(v):v)).join('&');
-    const res = await fetch(API_URL+'?'+qs, {method:'GET', mode:'cors'});
+    const res = await fetch(API_URL, {
+      method:'POST', mode:'cors',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, password:S.password, ...params})
+    });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error||'Request failed');
     return data;
   } finally { setLoading(false); }
 }
+
 // ── AUTH ─────────────────────────────────────────────────────
 async function doLogin() {
   const pw = document.getElementById('pw-input').value.trim();
@@ -487,21 +490,22 @@ function renderDash() {
 const OUTLETS = ['Coffee?','Bask Poes','Bask ECR','SOAK'];
 
 function outletCheckboxes(selected, prefix) {
-  const sel = (selected||'All'===selected?[]:((selected||'')).split(',').map(x=>x.trim()));
-  const allChecked = !selected || selected==='All';
+  // Treat blank, 'All', or all 4 outlets selected as "All"
+  const sel = (!selected || selected === 'All') ? [] : selected.split(',').map(x=>x.trim()).filter(Boolean);
+  const allChecked = sel.length === 0 || sel.length === OUTLETS.length;
   return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
     <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
       <input type="checkbox" id="${prefix}-all" onchange="toggleAllOutlets('${prefix}')" ${allChecked?'checked':''}> All outlets
     </label>
     ${OUTLETS.map(o=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
-      <input type="checkbox" class="${prefix}-outlet" value="${o}" onchange="syncAllOutlets('${prefix}')" ${allChecked||sel.includes(o)?'checked':''}> ${o}
+      <input type="checkbox" class="${prefix}-outlet" value="${o}" onchange="syncAllOutlets('${prefix}')" ${(allChecked||sel.includes(o))?'checked':''}> ${o}
     </label>`).join('')}
   </div>`;
 }
 
 function getSelectedOutlets(prefix) {
-  if (document.getElementById(prefix+'-all')?.checked) return 'All';
   const checked = [...document.querySelectorAll('.'+prefix+'-outlet:checked')].map(el=>el.value);
+  if (document.getElementById(prefix+'-all')?.checked || checked.length === OUTLETS.length) return 'All';
   return checked.join(',') || '';
 }
 
@@ -535,6 +539,7 @@ function renderUsers() {
           </div>
           <span class="badge b-${u.role}">${u.role.toUpperCase()}</span>
           <div class="user-actions">
+            <button class="btn btn-sm btn-purple" onclick="previewAs('${u.password}','${u.name}')" title="Preview as this user"><i class="ti ti-eye" style="font-size:12px"></i> Preview</button>
             <button class="btn btn-sm" onclick="openModal('editUser','${u.userId}')"><i class="ti ti-edit" style="font-size:12px"></i> Edit</button>
             <button class="btn btn-sm ${active?'btn-danger':'btn-success'}" onclick="toggleUserActive('${u.userId}','${active}')">
               ${active?'Deactivate':'Activate'}
@@ -544,6 +549,30 @@ function renderUsers() {
       </div>`;
     }).join('')}`;
 }
+
+// ── PREVIEW AS ───────────────────────────────────────────────
+function previewAs(password, name) {
+  const url = window.location.href.split('?')[0] + '?preview=' + encodeURIComponent(password) + '&name=' + encodeURIComponent(name);
+  window.open(url, '_blank');
+}
+
+// Auto-login if preview param present
+(function checkPreview() {
+  const params = new URLSearchParams(window.location.search);
+  const pw = params.get('preview');
+  const name = params.get('name');
+  if (pw) {
+    window.addEventListener('DOMContentLoaded', () => {
+      // Show a banner indicating preview mode
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#534AB7;color:white;text-align:center;padding:6px;font-size:12px;z-index:999';
+      banner.innerHTML = `Previewing as <strong>${name}</strong> — <a href="${window.location.pathname}" style="color:white;text-decoration:underline">exit preview</a>`;
+      document.body.appendChild(banner);
+      document.getElementById('pw-input').value = pw;
+      doLogin();
+    });
+  }
+})();
 
 // ── INTERACTIONS ─────────────────────────────────────────────
 function toggleReq(id) { S.openReqs.has(id)?S.openReqs.delete(id):S.openReqs.add(id); renderReqs(); }
